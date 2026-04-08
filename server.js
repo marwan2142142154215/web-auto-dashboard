@@ -5,7 +5,7 @@ const { processClaim, checkPendingStatus } = require('./automator');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(__dirname)); // untuk akses index.html di root
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -35,19 +35,34 @@ app.get('/api/claims', async (req, res) => {
   res.json(await getAllClaims());
 });
 
+let dbReady;
+let monitorInterval;
+
 async function monitorPending() {
+  if (!dbReady) return;
   await dbReady;
   const pendings = await getPendingClaims();
   for (const claim of pendings) {
-    const { status, remark } = await checkPendingStatus(claim.ticketCode);
-    if (status !== 'PENDING') {
-      await updateClaimStatus(claim.ticketCode, status, remark);
+    try {
+      const { status, remark } = await checkPendingStatus(claim.ticketCode);
+      if (status !== 'PENDING') {
+        await updateClaimStatus(claim.ticketCode, status, remark);
+        console.log(`Update ${claim.ticketCode} -> ${status}`);
+      }
+    } catch (err) {
+      console.error(`Gagal cek status ${claim.ticketCode}:`, err.message);
     }
   }
 }
-setInterval(monitorPending, 60000);
-monitorPending();
 
-let dbReady = initDB();
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+async function startServer() {
+  dbReady = initDB();
+  await dbReady;
+  console.log('Database siap');
+  monitorInterval = setInterval(monitorPending, 60000);
+  monitorPending();
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+startServer();
