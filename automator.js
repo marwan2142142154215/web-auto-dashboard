@@ -1,20 +1,13 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
-
-function getChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
-  const fs = require('fs');
-  const paths = ['/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium'];
-  for (const p of paths) if (fs.existsSync(p)) return p;
-  return null;
-}
 
 async function processClaim(userId, ticketCode, manualBetting = null) {
   let browser;
   try {
-    const chromePath = getChromePath();
-    if (!chromePath) throw new Error('Chrome tidak ditemukan. Tambahkan env PUPPETEER_EXECUTABLE_PATH');
-    browser = await puppeteer.launch({ executablePath: chromePath, headless: 'new', args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({ 
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage();
 
     // STEP 1: Buka bandar80
@@ -32,7 +25,6 @@ async function processClaim(userId, ticketCode, manualBetting = null) {
     let detailPage = pages[pages.length - 1];
     await detailPage.waitForSelector('body', { timeout: 15000 });
 
-    // Ambil scatter (cari teks "Scatter" diikuti angka)
     let scatterValue = '0';
     const content = await detailPage.content();
     const scatterMatch = content.match(/[Ss]catter\s*[:=]?\s*(\d+)/);
@@ -75,9 +67,7 @@ async function processClaim(userId, ticketCode, manualBetting = null) {
 async function checkPendingStatus(ticketCode) {
   let browser;
   try {
-    const chromePath = getChromePath();
-    if (!chromePath) return { status: 'PENDING', remark: '' };
-    browser = await puppeteer.launch({ executablePath: chromePath, headless: 'new', args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
     const page = await browser.newPage();
     await page.goto('https://bonussmb.com/', { waitUntil: 'networkidle2' });
     await page.click('a:contains("History"), a:contains("Riwayat")');
