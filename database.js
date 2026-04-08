@@ -18,8 +18,7 @@ async function initDB() {
       scatter TEXT,
       status TEXT DEFAULT 'PENDING',
       remark TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
   return db;
@@ -39,7 +38,7 @@ async function saveClaim(claim) {
 }
 
 async function updateClaimStatus(ticketCode, status, remark = '') {
-  await db.run(`UPDATE claims SET status = ?, remark = ?, updatedAt = CURRENT_TIMESTAMP WHERE ticketCode = ?`, [status, remark, ticketCode]);
+  await db.run(`UPDATE claims SET status = ?, remark = ? WHERE ticketCode = ?`, [status, remark, ticketCode]);
 }
 
 async function getAllClaims() {
@@ -50,8 +49,4 @@ async function getPendingClaims() {
   return await db.all(`SELECT * FROM claims WHERE status = 'PENDING'`);
 }
 
-async function getClaimByTicket(ticketCode) {
-  return await db.get(`SELECT * FROM claims WHERE ticketCode = ?`, ticketCode);
-}
-
-module.exports = { initDB, saveClaim, updateClaimStatus, getAllClaims, getPendingClaims, getClaimByTicket };
+module.exports = { initDB, saveClaim, updateClaimStatus, getAllClaims, getPendingClaims };
