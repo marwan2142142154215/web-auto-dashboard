@@ -1,0 +1,4 @@
+node_modules/
+claims.db
+.DS_Store
+*.log
