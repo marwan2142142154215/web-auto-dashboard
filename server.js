@@ -9,7 +9,29 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// ===== PERUBAHAN: Serve static files dari root (tempat index.html berada) =====
+// Coba cari di folder public dulu, jika tidak ada pakai root
+const publicPath = path.join(__dirname, 'public');
+const fs = require('fs');
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+} else {
+  // Jika folder public tidak ada, gunakan root sebagai static
+  app.use(express.static(__dirname));
+}
+// Fallback untuk semua route non-API
+app.get('*', (req, res) => {
+  // Coba kirim index.html dari root
+  const rootIndex = path.join(__dirname, 'index.html');
+  if (fs.existsSync(rootIndex)) {
+    res.sendFile(rootIndex);
+  } else if (fs.existsSync(path.join(__dirname, 'public', 'index.html'))) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).send('File index.html tidak ditemukan');
+  }
+});
 
 let dbReady = initDB();
 
@@ -20,7 +42,6 @@ app.post('/api/claim', async (req, res) => {
     await dbReady;
     await saveClaim({ userId, ticketCode, betting: manualBetting || '', scatter: '', status: 'PROCESSING' });
     
-    // Proses di background
     processClaim(userId, ticketCode, manualBetting).then(async (result) => {
       if (result.success) {
         await updateClaimStatus(ticketCode, 'PENDING', `Scatter: ${result.scatter}, Bet: ${result.betting}`);
@@ -45,7 +66,6 @@ app.get('/api/claims', async (req, res) => {
   res.json(claims);
 });
 
-// Scheduler pengecekan status pending setiap 1 menit
 async function monitorPending() {
   await dbReady;
   const pendings = await getPendingClaims();
