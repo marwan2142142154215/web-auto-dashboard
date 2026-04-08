@@ -1,15 +1,10 @@
 {
-  "name": "ticket-automation-railway",
+  "name": "ticket-auto",
   "version": "1.0.0",
-  "description": "Auto claim ticket with realtime status, optimized for Railway",
   "main": "server.js",
-  "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome",
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.6.1",
     "puppeteer-core": "^21.5.0",
     "sqlite3": "^5.1.6",
     "sqlite": "^5.1.1"
