@@ -5,72 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket Claim Automation</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
         body { background: #f0f2f5; padding: 20px; }
         .container { max-width: 1400px; margin: 0 auto; }
         .header { background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb4d); border-radius: 28px; padding: 24px 32px; margin-bottom: 28px; color: white; }
-        .header h1 { font-size: 1.9rem; }
-        .form-card { background: white; border-radius: 28px; padding: 24px 28px; margin-bottom: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .form-card { background: white; border-radius: 28px; padding: 24px; margin-bottom: 32px; }
         .form-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
         .input-group { flex: 1; min-width: 200px; }
-        .input-group label { font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block; font-size: 0.85rem; }
-        .input-group input { width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 20px; font-size: 1rem; }
-        .btn-submit { background: #1e293b; color: white; border: none; padding: 12px 28px; border-radius: 40px; font-weight: 700; cursor: pointer; }
-        .table-wrapper { background: white; border-radius: 28px; overflow-x: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
-        .status-table { width: 100%; border-collapse: collapse; }
-        .status-table th { background: #f8fafc; padding: 16px 12px; text-align: left; }
-        .status-table td { padding: 14px 12px; border-bottom: 1px solid #f1f5f9; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 40px; font-size: 0.75rem; font-weight: 700; }
-        .badge-pending { background: #fef9c3; color: #854d0e; }
-        .badge-approved { background: #dcfce7; color: #166534; }
-        .badge-rejected { background: #fee2e2; color: #991b1b; }
-        .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: white; padding: 12px 20px; border-radius: 40px; z-index: 1000; display: none; }
+        .input-group label { font-weight: 600; display: block; margin-bottom: 8px; }
+        .input-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 20px; }
+        .btn-submit { background: #1e293b; color: white; border: none; padding: 12px 28px; border-radius: 40px; cursor: pointer; }
+        .table-wrapper { background: white; border-radius: 28px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .badge-pending { background: #fef9c3; padding: 4px 12px; border-radius: 40px; }
+        .badge-approved { background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 40px; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 40px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: white; padding: 12px 20px; border-radius: 40px; display: none; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="header"><h1>🎫 Ticket Claim Automation</h1><p>Real-time sync · Auto claim · Status monitoring</p></div>
+    <div class="header"><h1>🎫 Ticket Claim Automation</h1><p>Real-time · Auto claim di background · Update setiap 5 detik</p></div>
     <div class="form-card">
         <div class="form-grid">
-            <div class="input-group"><label>👤 User ID</label><input type="text" id="userId" placeholder="gemar88vip"></div>
-            <div class="input-group"><label>🎟️ Kode Tiket</label><input type="text" id="ticketCode" placeholder="246514545455000"></div>
-            <div class="input-group"><label>💰 Betting (opsional)</label><input type="text" id="bettingManual" placeholder="Auto detect"></div>
+            <div class="input-group"><label>User ID</label><input id="userId" placeholder="gemar88vip"></div>
+            <div class="input-group"><label>Kode Tiket</label><input id="ticketCode" placeholder="246514545455000"></div>
+            <div class="input-group"><label>Betting (opsional)</label><input id="bettingManual" placeholder="Auto"></div>
             <button class="btn-submit" id="submitBtn">🚀 Proses Klaim</button>
         </div>
     </div>
     <div class="table-wrapper">
-        <table class="status-table"><thead><tr><th>User ID</th><th>Kode Tiket</th><th>Betting</th><th>Scatter</th><th>Status</th><th>Keterangan</th><th>Waktu</th></tr></thead><tbody id="claimsBody"><tr><td colspan="7">Memuat......</td></tr></tbody></table>
+        <table><thead><tr><th>User ID</th><th>Kode Tiket</th><th>Betting</th><th>Scatter</th><th>Status</th><th>Keterangan</th><th>Waktu</th></tr></thead><tbody id="claimsBody"><tr><td colspan="7">Memuat...</td></tr></tbody></table>
     </div>
 </div>
 <div id="toast" class="toast"></div>
-<script src="/socket.io/socket.io.js"></script>
 <script>
-    const socket = io();
     const tbody = document.getElementById('claimsBody');
     const toast = document.getElementById('toast');
     function showToast(msg, isError=false) { toast.textContent = msg; toast.style.display = 'block'; toast.style.background = isError ? '#b91c1c' : '#0f172a'; setTimeout(()=>toast.style.display='none',4000); }
-    function render(data) {
-        if(!data.length) { tbody.innerHTML = '<tr><td colspan="7">Belum ada数据</td></tr>'; return; }
-        tbody.innerHTML = data.map(c => {
-            let badge = '';
-            if(c.status === 'PENDING') badge = '<span class="badge badge-pending">PENDING</span>';
-            else if(c.status === 'APPROVED') badge = '<span class="badge badge-approved">✅ APPROVED</span>';
-            else if(c.status === 'REJECTED') badge = '<span class="badge badge-rejected">❌ REJECTED</span>';
-            else badge = `<span class="badge" style="background:#e2e8f0">${c.status}</span>`;
-            return `<tr><td>${escapeHtml(c.userId)}</td><td style="font-family:monospace">${escapeHtml(c.ticketCode)}</td><td>${c.betting||'-'}</td><td>${c.scatter||'-'}</td><td>${badge}</td><td class="remark">${escapeHtml(c.remark||'')}</td><td>${new Date(c.createdAt).toLocaleString()}</td></tr>`;
-        }).join('');
+    function escapeHtml(s) { if(!s) return ''; return s.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+    async function loadData() {
+        try {
+            const res = await fetch('/api/claims');
+            const data = await res.json();
+            if(!data.length) { tbody.innerHTML = '<tr><td colspan="7">Belum ada data</td></tr>'; return; }
+            tbody.innerHTML = data.map(c => `
+                <tr>
+                    <td>${escapeHtml(c.userId)}</td>
+                    <td>${escapeHtml(c.ticketCode)}</td>
+                    <td>${c.betting || '-'}</td>
+                    <td>${c.scatter || '-'}</td>
+                    <td><span class="badge-${(c.status || 'PENDING').toLowerCase()}">${c.status || 'PENDING'}</span></td>
+                    <td>${escapeHtml(c.remark || '')}</td>
+                    <td>${new Date(c.createdAt).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        } catch(e) { console.error(e); }
     }
-    function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;});}
-    socket.on('initial-data', render);
-    socket.on('new-claim', () => fetch('/api/claims').then(r=>r.json()).then(render));
-    socket.on('claim-updated', () => fetch('/api/claims').then(r=>r.json()).then(render));
     document.getElementById('submitBtn').onclick = async () => {
         const userId = document.getElementById('userId').value.trim();
         const ticketCode = document.getElementById('ticketCode').value.trim();
         const betting = document.getElementById('bettingManual').value.trim();
-        if(!userId || !ticketCode) return showToast('User ID dan Kode Tiket wajib diisi', true);
+        if(!userId || !ticketCode) return showToast('Isi semua field!', true);
         const btn = document.getElementById('submitBtn');
-        btn.disabled = true; btn.innerHTML = '⏳ Memproses...';
+        btn.disabled = true; btn.textContent = '⏳ Memproses...';
         try {
             const res = await fetch('/api/claim', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, ticketCode, manualBetting: betting || null }) });
             const json = await res.json();
@@ -79,11 +78,12 @@
             document.getElementById('userId').value = '';
             document.getElementById('ticketCode').value = '';
             document.getElementById('bettingManual').value = '';
-            setTimeout(()=> fetch('/api/claims').then(r=>r.json()).then(render), 1000);
+            setTimeout(loadData, 1000);
         } catch(e) { showToast('❌ '+e.message, true); }
-        finally { btn.disabled = false; btn.innerHTML = '🚀 Proses Klaim'; }
+        finally { btn.disabled = false; btn.textContent = '🚀 Proses Klaim'; }
     };
-    setInterval(()=> fetch('/api/claims').then(r=>r.json()).then(render), 5000);
+    loadData();
+    setInterval(loadData, 5000);
 </script>
 </body>
 </html>
